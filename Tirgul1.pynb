@@ -1,1 +1,154 @@
+import ipywidgets as widgets
+
+button = widgets.Button(description="Click Me!")
+output = widgets.Output()
+
+def on_button_clicked(b):
+  # Display the message within the output widget.
+  with output:
+    with open('/content/drive/MyDrive/anan/1.txt', 'r') as file:
+      contents = file.read()
+      print(contents)
+
+button.on_click(on_button_clicked)
+display(button, output)
+
+
+
+
+
+# File path for the student details
+file_path = '/content/drive/MyDrive/anan/students.txt'
+
+# Read the file and parse details
+with open(file_path, 'r') as file:
+    contents = file.readlines()
+
+# Parse the details into a dictionary
+details = {}
+for line in contents:
+    if line.strip():
+        parts = line.split()
+        name = ' '.join(parts[:2])  # First two parts are the name
+        link_index = next((i for i, part in enumerate(parts) if part.startswith('http')), None)
+        if link_index is not None:
+            link = parts[link_index]
+            other_details = parts[2:link_index]  # Everything between the email and the link
+            details[name] = other_details + [link]
+        else:
+            details[name] = parts[2:]  # If no link, just include other details
+
+# Create a dropdown widget
+dropdown = widgets.Dropdown(
+    options=list(details.keys()),
+    value=list(details.keys())[0] if details else None,  # Default to the first name if available
+    description='Choose:',
+    disabled=False,
+)
+
+# Create text boxes for details
+email_box = widgets.Text(
+    value='',
+    description='Email:',
+    layout=widgets.Layout(width='100%'),
+    disabled=True,
+)
+
+course_box = widgets.Text(
+    value='',
+    description='Course:',
+    layout=widgets.Layout(width='100%'),
+    disabled=True,
+)
+
+extra_box = widgets.Text(
+    value='',
+    description='Extra:',
+    layout=widgets.Layout(width='100%'),
+    disabled=True,
+)
+
+link_box = widgets.Text(
+    value='',
+    description='Link:',
+    layout=widgets.Layout(width='100%'),
+    disabled=True,
+)
+
+# Create a text box for updating the favorite program
+fav_program_box = widgets.Text(
+    value='',
+    description='Fav Program:',
+    layout=widgets.Layout(width='100%'),
+    placeholder='Enter favorite program',
+)
+
+# Create a button to update the favorite program
+update_button = widgets.Button(
+    description='Update',
+    button_style='success',
+    tooltip='Click to update favorite program',
+)
+
+# Label for success or error messages
+status_label = widgets.Label(value='')
+
+# Callback function to update text boxes
+def update_textboxes(change):
+    selected_name = change['new']
+    if selected_name in details:
+        detail_parts = details[selected_name]
+        email_box.value = detail_parts[0] if len(detail_parts) > 0 else ''
+        course_box.value = detail_parts[1] if len(detail_parts) > 1 else ''
+        extra_box.value = detail_parts[2] if len(detail_parts) > 2 else ''
+        link_box.value = detail_parts[-1] if detail_parts[-1].startswith('http') else ''
+
+# Callback function to handle the update button click
+def handle_update_button_click(_):
+    selected_name = dropdown.value
+    favorite_program = fav_program_box.value.strip()
+    if selected_name and favorite_program:
+        # Update the student's row
+        updated_lines = []
+        for line in contents:
+            if line.startswith(selected_name):
+                parts = line.split()
+                link_index = next((i for i, part in enumerate(parts) if part.startswith('http')), None)
+                if link_index is not None:
+                    link = parts[link_index]
+                    other_details = parts[2:link_index]
+                    updated_line = f"{selected_name} {' '.join(other_details)} {link} {favorite_program}\n"
+                else:
+                    updated_line = f"{selected_name} {' '.join(parts[2:])} {favorite_program}\n"
+                updated_lines.append(updated_line)
+                # Update the in-memory dictionary
+                details[selected_name] = other_details + [link, favorite_program]
+            else:
+                updated_lines.append(line)
+
+        # Write updated content back to the file
+        try:
+            with open(file_path, 'w') as file:
+                file.writelines(updated_lines)
+            status_label.value = f"Successfully updated favorite program for {selected_name}."
+            fav_program_box.value = ''  # Clear the input box
+        except Exception as e:
+            status_label.value = f"Error updating the file: {str(e)}"
+    else:
+        status_label.value = "Please select a student and enter a favorite program."
+
+# Attach the callback to the dropdown and button
+dropdown.observe(update_textboxes, names='value')
+update_button.on_click(handle_update_button_click)
+
+# Initialize text boxes with the first value
+if dropdown.value in details:
+    detail_parts = details[dropdown.value]
+    email_box.value = detail_parts[0] if len(detail_parts) > 0 else ''
+    course_box.value = detail_parts[1] if len(detail_parts) > 1 else ''
+    extra_box.value = detail_parts[2] if len(detail_parts) > 2 else ''
+    link_box.value = detail_parts[-1] if detail_parts[-1].startswith('http') else ''
+
+# Display the widgets
+display(dropdown, email_box, course_box, extra_box, link_box, fav_program_box, update_button, status_label)
 
